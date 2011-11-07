@@ -13,7 +13,7 @@ def calculate_elo_rank(winner_rank, loser_rank, penalize_loser=True):
         k = 24
     else:
         k = 16
-    new_winner_rank = round(winner_rank + (k * (1 - odds)))
+    new_winner_rank = int(round(winner_rank + (k * (1 - odds))))
     if penalize_loser:
         new_rank_diff = new_winner_rank - winner_rank
         new_loser_rank = loser_rank - new_rank_diff
