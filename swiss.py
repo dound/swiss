@@ -1,13 +1,17 @@
 """Computes swiss pairings"""
 import random
 
+from elo import calculate_new_elos
+
 GAME_POINTS_PER_BYE = 6
 STANDINGS = {}
 
+
 class PlayerStanding(object):
     """Info about a given player in the swiss tournament"""
-    def __init__(self, player):
+    def __init__(self, player, rating=1400):
         self.player = player
+        self.rating = rating
         self.match_points = 0
         self.game_points = 0
         self.games_played = 0
@@ -16,9 +20,6 @@ class PlayerStanding(object):
 
     def record_match(self, other_player, game_wins, game_losses, game_draws):
         """Record a match result between this player and another player"""
-        if self.player == 'underhill':
-            import pdb; pdb.set_trace()
-
         num_games = game_wins + game_losses + game_draws
         my_game_points = 3 * game_wins + game_draws
         self.game_points += my_game_points
@@ -38,6 +39,17 @@ class PlayerStanding(object):
 
         self.previous_opponents.append(other_player)
         other_player.previous_opponents.append(self)
+
+        if game_wins > game_losses:
+            score = 1.0
+        elif game_wins < game_losses:
+            score = 0.0
+        else:
+            score = 0.5
+        r1, r2 = calculate_new_elos(self.rating, other_player.rating, score)
+        self.rating = r1
+        other_player.rating = r2
+
 
     def record_bye(self, game_points_earned=GAME_POINTS_PER_BYE):
         """Record a BYE for this player (like a clean sweep win)"""
@@ -107,7 +119,7 @@ class PlayerStanding(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        fmt = '%010s    MP=%2d    OMW%%=%.2f    gp=%2d    OGW%%=%.2f  MW%%=%.2f  GW%%=%.2f  #GP=%2d  opp=[%s]'
+        fmt = '%010s    MP=%2d    OMW%%=%.2f    gp=%2d    OGW%%=%.2f  MW%%=%.2f  GW%%=%.2f  #GP=%2d  Elo=%d  opp=[%s]'
         prev_opp_str = ','.join(str(player_or_bye(p))
                                for p in sorted(self.previous_opponents,
                                                key=lambda p : player_or_bye(p)))
@@ -119,6 +131,7 @@ class PlayerStanding(object):
                       self.match_win_percentage(),
                       self.game_win_percentage(),
                       self.games_played,
+                      self.rating,
                       prev_opp_str)
 
 def player_or_bye(p):
