@@ -47,6 +47,8 @@ class PlayerStanding(object):
         else:
             score = 0.5
         r1, r2 = calculate_new_elos(self.rating, other_player.rating, score)
+        print '%s rating: %d -> %d' % (self.player, self.rating, r1)
+        print '%s rating: %d -> %d' % (other_player.player, other_player.rating, r2)
         self.rating = r1
         other_player.rating = r2
 
@@ -170,6 +172,7 @@ def assign_pairings(player_standings):
             possible_pairings.append((attractiveness, p1, p2))
 
     # group combinations by attractiveness
+    possible_pairings.sort()
     cur_group = []
     cur_group_attractiveness = possible_pairings[0][0]
     groups = [cur_group]
