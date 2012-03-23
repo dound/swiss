@@ -153,22 +153,29 @@ def assign_pairings(player_standings):
       * Players with similar match points will be paired, as much as possible based
         on the above two constraints.
     """
-    # produce all VALID combinations of players
+    player_standings.sort()
     if len(player_standings) % 2:
-        player_standings = player_standings + ['BYE']
+        # give a BYE to the lowest ranked player who has not received a BYE
+        for player in player_standings[::-1]:
+            if 'BYE' not in player.previous_opponents:
+                break
+        bye_player = player
+        player_standings.remove(player)
+        assert len(player_standings) % 2 == 0
+    else:
+        bye_player = None
+
+    # produce all VALID combinations of players
     possible_pairings = []
     for i in xrange(len(player_standings) - 1):
         for j in xrange(i + 1, len(player_standings)):
-            p1 = player_standings[i]  # never 'BYE' since 'BYE' is the last element in group
+            p1 = player_standings[i]
             p2 = player_standings[j]
             if p2 in p1.previous_opponents:
                 continue
-            if p2 != 'BYE':
-                if p1 in p2.previous_opponents:
-                    continue
-                attractiveness = abs(p1.match_points - p2.match_points)
-            else:
-                attractiveness = -1
+            if p1 in p2.previous_opponents:
+                continue
+            attractiveness = abs(p1.match_points - p2.match_points)
             possible_pairings.append((attractiveness, p1, p2))
 
     # group combinations by attractiveness
@@ -202,5 +209,7 @@ def assign_pairings(player_standings):
                 del unassigned_players[p2]
                 pairings.append((p1, p2))
             if not unassigned_players:
+                if bye_player:
+                    pairings.append((bye_player, 'BYE'))
                 return pairings  # everyone got assigned!
     raise Exception("failed to find a valid pairing")
