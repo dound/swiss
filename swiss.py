@@ -9,9 +9,10 @@ STANDINGS = {}
 
 class PlayerStanding(object):
     """Info about a given player in the swiss tournament"""
-    def __init__(self, player, rating=1400):
+    def __init__(self, player, rating=1400, pod=-1):
         self.player = player
         self.rating = rating
+        self.pod = pod
         self.match_points = 0
         self.game_points = 0
         self.games_played = 0
@@ -121,7 +122,7 @@ class PlayerStanding(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        fmt = '%010s    MP=%2d    OMW%%=%.2f    gp=%2d    OGW%%=%.2f  MW%%=%.2f  GW%%=%.2f  #GP=%2d  Elo=%d  opp=[%s]'
+        fmt = '%010s    MP=%2d    OMW%%=%.3f    gp=%2d    OGW%%=%.2f  MW%%=%.2f  GW%%=%.2f  #GP=%2d  Elo=%d  opp=[%s]'
         prev_opp_str = ','.join(str(player_or_bye(p))
                                for p in sorted(self.previous_opponents,
                                                key=lambda p : player_or_bye(p)))
