@@ -150,6 +150,7 @@ def player_or_bye(p):
         return p
     return p.player
 
+
 def assign_pairings(player_standings):
     """Given the current standings, return a list of 2-tuples of who should play
     who in the next round.  Raises an exception if a pairing is not found (this
@@ -173,51 +174,96 @@ def assign_pairings(player_standings):
     else:
         bye_player = None
 
-    # produce all VALID combinations of players
-    possible_pairings = []
-    for i in xrange(len(player_standings) - 1):
-        for j in xrange(i + 1, len(player_standings)):
-            p1 = player_standings[i]
-            p2 = player_standings[j]
-            if p2 in p1.previous_opponents:
-                continue
-            if p1 in p2.previous_opponents:
-                continue
-            attractiveness = abs(p1.match_points - p2.match_points)
-            possible_pairings.append((attractiveness, p1, p2))
+    tries = 100
+    while True:
+        pairings = _random_pairings(player_standings)
+        if pairings:
+            if bye_player:
+                pairings.append((bye_player, 'BYE'))
+            return pairings
+        elif tries:
+            tries -= 1
+            if not tries:
+                raise Exception("no pairings found")
 
-    # group combinations by attractiveness
-    possible_pairings.sort()
-    cur_group = []
-    cur_group_attractiveness = possible_pairings[0][0]
-    groups = [cur_group]
-    for p in possible_pairings:
-        if p[0] == cur_group_attractiveness:
-            cur_group.append(p)
+
+def _random_pairings(player_standings):
+    """Helper function which attempts to assign pairings to a specified group of
+    players.  Must be an even number of players.
+    """
+    assert len(player_standings) % 2 == 0
+    # Assign pairings from the top-down -- start with undefeated players.
+    pairings = []
+    leftover_player = None
+    while player_standings:
+        print len(player_standings), 'left to pair'
+
+        # get the players in the top remaining group
+        cur_match_points = player_standings[0].match_points
+        next_mp_idx = 0
+        while next_mp_idx < len(player_standings) and \
+                player_standings[next_mp_idx].match_points == cur_match_points:
+            next_mp_idx += 1
+        players_in_group = player_standings[:next_mp_idx]
+        player_standings = player_standings[next_mp_idx:]
+
+        # if only 1 player in this group and no leftovers, then defer them to
+        # the next group (nobody to pair with yet)
+        if len(players_in_group) == 1:
+            if not leftover_player:
+                leftover_player = players_in_group[0]
+                continue
+
+        # randomly pair up those in this group along with any leftover
+        # player from the last group
+        group_pairing_tries = 100
+        while True:
+            ret = _random_group_pairings(players_in_group[:], leftover_player)
+            if not ret:
+                group_pairing_tries -= 1
+                if not group_pairing_tries:
+                    return None
+            else:
+                pairings += ret[0]
+                leftover_player = ret[1]
+                break  # successfully paired the group
+    return pairings
+
+
+def _random_group_pairings(players_in_group, leftover_player=None):
+    """Randomly pair up the players in players_in_group, plus leftover_player if
+    provided.  leftover_player MUST be paired when provided.
+
+    Returns 2-tuple of (list of 2-tuples of players paired, leftover_player).
+    None is returned if the random pairing failed.  This does not mean there is
+    NO pairing, just that the random pairing attempted was invalid (e.g., it
+    tried to pair two players who had played before).
+    """
+    random.shuffle(players_in_group)
+    # leftover player always first in line to ensure they aren't leftover again
+    if leftover_player:
+        players_to_pair = [leftover_player] + players_in_group
+    else:
+        players_to_pair = players_in_group
+
+    new_leftover_player = None
+    group_pairings = []
+    while players_to_pair:
+        p1 = players_to_pair.pop(0)
+        if not players_to_pair:
+            new_leftover_player = p1
+            break
         else:
-            cur_group = [p]
-            cur_group_attractiveness = p[0]
-            groups.append(cur_group)
-
-    # shuffle each group and recreate possible pairings ... now ordered by
-    # attractiveness, with ties randomly ordered
-    possible_pairings = []
-    for group in groups:
-        random.shuffle(group)
-        possible_pairings += group
-
-    # brute force solver
-    for first_choice_idx in xrange(len(possible_pairings)):
-        unassigned_players = dict((p, True) for p in player_standings)
-        pairings = []
-        for i in xrange(first_choice_idx, len(possible_pairings)):
-            attractiveness, p1, p2 = possible_pairings[i]
-            if p1 in unassigned_players and p2 in unassigned_players:
-                del unassigned_players[p1]
-                del unassigned_players[p2]
-                pairings.append((p1, p2))
-            if not unassigned_players:
-                if bye_player:
-                    pairings.append((bye_player, 'BYE'))
-                return pairings  # everyone got assigned!
-    raise Exception("failed to find a valid pairing")
+            paired = False
+            for p2 in players_to_pair:
+                if p1 not in p2.previous_opponents:
+                    players_to_pair.remove(p2)
+                    group_pairings.append((p1, p2))
+                    paired = True
+                    break
+            if not paired:
+                # oops, couldn't pair p1 with anyone ... could do actual
+                # backtracking here until we're sure no possible pairing exists,
+                # but let's be lazy ...
+                return None
+    return group_pairings, new_leftover_player
