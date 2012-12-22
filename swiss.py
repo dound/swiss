@@ -53,12 +53,19 @@ class PlayerStanding(object):
         self.rating = r1
         other_player.rating = r2
 
-
     def record_bye(self, game_points_earned=GAME_POINTS_PER_BYE):
         """Record a BYE for this player (like a clean sweep win)"""
         self.game_points += game_points_earned
         self.match_points += 3
         self.previous_opponents.append('BYE')
+
+    def record_forfeit_win(self, other_player,
+                       game_points_earned=GAME_POINTS_PER_BYE):
+        """Record a BYE for this player (like a clean sweep win)"""
+        self.game_points += game_points_earned
+        self.match_points += 3
+        self.previous_opponents.append(other_player)
+        other_player.previous_opponents.append(self)
 
     def match_win_percentage(self, omit_bye=True):
         """Return the percentage of matches won (minimum 0.33) excluding BYEs"""
